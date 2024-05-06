@@ -1,7 +1,7 @@
 import pygame
 import sys
 import numpy as np
-from aiconnectfour import Bot, Connect
+from aiconnectfour import Bot, MiniMaxBot, MCTSBot, Connect
 from pygame.locals import *
  
 HEIGHT = 450
@@ -51,39 +51,45 @@ if __name__ == "__main__":
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption("Connect Four")
 
+    b1 = MiniMaxBot("Player 1")
+    b2 = MiniMaxBot("Player 2")
+
     # main loop
     while True:
-        print("cool")
         board_env.reset()
         in_game = False
+
+        b1.instantiate(1, board_env.action_space, board_env)
+        b2.instantiate(-1, board_env.action_space, board_env)
+
         p1 = None
         p2 = None
 
-        # print("Welcome to Connect Four! Player 1 is red and Player 2 is yellow.")
+        print("Welcome to Connect Four! Player 1 is red and Player 2 is yellow.")
 
-        # valid_input = False
-        # while not valid_input:
-        #     p1 = input("Player 1 human or bot? (h/b):")
-        #     if p1 == 'h':
-        #         valid_input = True
-        #     elif p1 == 'b':
-        #         valid_input = True
-        #     else:
-        #         print("Invalid input. Please enter 'h' or 'b'")
-        #         valid_input = False
-        #         continue
+        valid_input = False
+        while not valid_input:
+            p1 = input("Player 1 human or bot? (h/b):")
+            if p1 == 'h':
+                valid_input = True
+            elif p1 == 'b':
+                valid_input = True
+            else:
+                print("Invalid input. Please enter 'h' or 'b'")
+                valid_input = False
+                continue
 
-        # valid_input = False
-        # while not valid_input:
-        #     p2 = input("Player 2 human or bot? (h/b):")
-        #     if p1 == 'h':
-        #         valid_input = True
-        #     elif p1 == 'b':
-        #         valid_input = True
-        #     else:
-        #         print("Invalid input. Please enter 'h' or 'b'")
-        #         valid_input = False
-        #         continue
+        valid_input = False
+        while not valid_input:
+            p2 = input("Player 2 human or bot? (h/b):")
+            if p1 == 'h':
+                valid_input = True
+            elif p1 == 'b':
+                valid_input = True
+            else:
+                print("Invalid input. Please enter 'h' or 'b'")
+                valid_input = False
+                continue
 
         in_game = True
 
@@ -92,10 +98,28 @@ if __name__ == "__main__":
 
         # game loop
         while in_game:
+            # reset this so that piece starts near the center every turn
+            
+
             draw_board(screen, board_env._get_obs())
             draw_active_piece(screen, active_drop, active_player)
             pygame.display.flip()
 
+            if p1 == 'b' and active_player == 1:
+                active_drop = b1.get_move(board_env._get_obs())
+                board_env.step(active_drop, active_player)
+                active_drop = BOARD_WIDTH // 2
+                active_player = -active_player                
+                continue
+            
+            if p2 == 'b' and active_player == -1:
+                active_drop = b2.get_move(board_env._get_obs())
+                board_env.step(active_drop, active_player)
+                active_drop = BOARD_WIDTH // 2
+                active_player = -active_player
+                continue
+
+            # human input check
             for event in pygame.event.get():
                 if event.type == QUIT:
                     pygame.quit()
@@ -121,9 +145,8 @@ if __name__ == "__main__":
 
                                 in_game = False
                             else:
+                                active_drop = BOARD_WIDTH // 2
                                 active_player = -active_player
-                        # if a bot decides to make an illegal move for whatever reason just resample
-
                 FRAMEPERSEC.tick(FPS)
 
         valid_input = False

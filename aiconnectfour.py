@@ -1,3 +1,4 @@
+from time import time
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
@@ -132,7 +133,7 @@ class MiniMaxBot(Bot):
       e = self.env.copy()
       obs, reward, terminated, _, _ = e.step(action, self.color)
       if not terminated:
-        scores.append(self.look_forward(-self.color, 0, 3, e))
+        scores.append(self.look_forward(-self.color, 0, 2, e))
       else:
         scores.append(reward)
     # print(scores)
@@ -151,7 +152,7 @@ class MiniMaxBot(Bot):
         scores.append(s)
       return color*max(np.array(scores) * color)
     else:
-      return self.mcts(color, 10, env.copy())
+      return self.mcts(color, 6, env.copy())
 
   def mcts(self, color, num_rollouts, env):
     obs = str(env._get_obs())
@@ -176,3 +177,96 @@ class MiniMaxBot(Bot):
       obs, reward, terminated, _, _ = env.step(action, color)
       color *= -1
     return reward
+
+class MCTSBot(Bot):
+  # hashes position to tuple of (# wins for color 1, # of visits) only inside if fully expanded
+  eval_dict = {}
+  def __init__(self, name=None):
+    super().__init__(name)
+    self.update_list = []
+
+  def get_move(self, observation):
+    self.update_list = []
+    now = time()
+    while time() - now < 4:
+      en = self.env.copy()
+      en, color = self.traverse(en, self.color) # en
+      rollout_result = self.rollout(en,color)
+      #update weights
+      for node_str in self.update_list:
+        if node_str not in MCTSBot.eval_dict:
+          MCTSBot.eval_dict[node_str] = [0,0]
+        node = MCTSBot.eval_dict[node_str]
+        if rollout_result > 0:
+          node[0] += 1
+        node[1] += 1
+
+    vals = []
+    for move in self.env.get_legal_moves():
+      en = self.env.copy()
+      en.step(move, color)
+      try:
+        node = MCTSBot.eval_dict[str(en._get_obs())]
+        vals.append(node[0]/node[1])
+      except:
+        vals.append(-100 * self.color)
+        # print(en.grid)
+
+    return np.argmax((np.array(vals) * self.color))
+
+
+
+  # traverse using uct to terminal or leaf node
+  def traverse(self, en, color):
+    e = en.copy()
+    while s:=str(e._get_obs()) in MCTSBot.eval_dict and not e.is_full():
+      self.update_list.append(s)
+      self.step_best_UCT(e, color)
+      color = -color
+
+    self.update_list.append(s)
+    return e, color
+
+  # implement rollouts and backpropogate
+  def rollout(self, env, color):
+    if env.terminated:
+      return env.last_reward
+
+    action = np.random.choice(env.get_legal_moves())
+    env.step(action, color)
+    self.update_list.append(str(env._get_obs()))
+    return self.rollout(env, -color)
+
+    # may run into errors when run on terminal nodes that are unvisited?
+    terminated = False
+    while not terminated:
+      action = env.action_space.sample()
+      obs, reward, terminated, _, _ = env.step(action, color)
+      self.update_list.append(str(env._get_obs()))
+      color = -color
+    return reward
+
+  # step along based on UCT
+  def step_best_UCT(self, e, color):
+    best_move, best_val = -100,-100
+    parent_vals = MCTSBot.eval_dict[str(e._get_obs())]
+    moves = e.get_legal_moves()
+    np.random.shuffle(moves)
+    for move in moves:
+      node = e.copy()
+      node.step(move, color)
+      if node_str:=str(node._get_obs()) not in MCTSBot.eval_dict:
+        e.step(move, color) # we step and return, we've reached a leaf
+        return
+      else:
+        node_vals = MCTSBot.eval_dict[node_str]
+        wins1, visits = node_vals
+        _, parent_visits = parent_vals
+
+        wins = wins1 if color == 1 else visits - wins1
+        UCT = wins/visits + np.sqrt(2 * np.log2(parent_visits)/visits)
+
+        if UCT > best_val:
+          best_val = UCT
+          best_move = move
+    e.step(best_move, color)
