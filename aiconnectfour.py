@@ -1,6 +1,7 @@
 from time import time
 import gymnasium as gym
 from gymnasium import spaces
+from math import sqrt
 import numpy as np
 
 class Connect(gym.Env):
@@ -170,62 +171,96 @@ class Bot:
     self.env = env
 
   def get_move(self, observation):
-    return self.actions.sample()
+    return np.random.choice(self.env.get_legal_moves())
 
   def train(obs, action, new_obs, color):
     pass
 
 class MiniMaxBot(Bot):
-  total_rollout_collisions = 0
+  total_rollouts = 0
+  bad_rollouts = 0
   eval_dict = {}
-  def __init__(self, name=None, depth = 2):
+  def __init__(self, name=None, think_time = 3):
     super().__init__(name)
     self.discount = 0.95
-    self.depth = depth
+    self.think_time = think_time
 
-  def get_move(self, observation):
-    scores = []
-    actions = []
-    for action in self.env.get_legal_moves():
-      e = self.env.copy()
-      actions.append(action)
-      obs, reward, terminated, _, _ = e.step(action, self.color)
-      if not terminated:
-        scores.append(self.look_forward(-self.color, 0, self.depth, e))
-      else:
-        # print("Found terminal")
-        scores.append(reward)
+  def get_move(self, observation, think_time = None):
+    if think_time == None:
+      think_time = self.think_time
+    
+    now = time()
+    depth = 0
+    while time() - now < think_time:
+      depth += 1
+      scores = []
+      actions = []
+      for action in self.env.get_legal_moves():
+        e = self.env.copy()
+        actions.append(action)
+        obs, reward, terminated, _, _ = e.step(action, self.color)
+        if not terminated:
+          scores.append(self.look_forward(-self.color, 0, depth, e, -1000, 1000))
+        else:
+          # print("Found terminal")
+          scores.append(reward)
+      best = actions[np.argmax(np.array(scores) * self.color)]
     # print(scores)
     # print(observation)
-    return actions[np.argmax(np.array(scores) * self.color)]
+    return best
 
-  def look_forward(self, color, depth, max_depth, env):
+  def look_forward(self, color, depth, max_depth, env, alpha, beta):
     if depth < max_depth:
       scores = []
       for action in env.get_legal_moves():
         e = env.copy()
         obs, reward, terminated, _, _ = e.step(action, color)
         if terminated:
-          return reward
-        s = self.look_forward(color*-1, depth+1, max_depth, e)
-        scores.append(s)
+          scores.append(reward)
+        else:
+          s = self.look_forward(color*-1, depth+1, max_depth, e, alpha, beta)
+          scores.append(s)
+          if color == 1:
+            v = max(scores)
+            alpha = max(alpha, v)
+            if v > beta: # don't check rest
+              break
+          else:
+            v = min(scores)
+            beta = min(beta, v)
+            if v <= alpha: # don't check rest
+              break
+
       return color*max(np.array(scores) * color) * self.discount
     else:
       return self.mcts(color, 6, env.copy()) * self.discount
 
-  def mcts(self, color, num_rollouts, env):
+  def mcts(self, color, num_rollouts, env, max_rollouts = 30):
     obs = str(env._get_obs())
+    
     # implement little lookup table to speed things up
-    # if obs in MiniMaxBot.eval_dict:
-    #   MiniMaxBot.total_rollout_collisions += 1
-    #   # if MiniMaxBot.total_rollout_collisions % 1 == 0:
-    #   #   print("eval_dict size", len(MiniMaxBot.eval_dict.keys()))
-    #   return MiniMaxBot.eval_dict[obs]
+    if obs in MiniMaxBot.eval_dict:
+      # MiniMaxBot.total_rollout_collisions += 1
+      # if MiniMaxBot.total_rollout_collisions % 1 == 0:
+      #   print("eval_dict size", len(MiniMaxBot.eval_dict.keys()))
+      return MiniMaxBot.eval_dict[obs]
 
     s = []
     for n in range(num_rollouts):
+      MiniMaxBot.total_rollouts += 1
       s.append(self.rollout(color, env.copy()))
-    score = sum(s)/num_rollouts
+    score = np.array(s).mean()
+
+    extra_rollouts = 0
+    while extra_rollouts < max_rollouts and abs(score:=np.array(s).mean()) - np.array(s).std()/2/sqrt(len(s)-num_rollouts+1) < 0:
+      s.append(self.rollout(color, env.copy()))
+      extra_rollouts += 1
+
+    # low confidence, restart the search at this node
+    if extra_rollouts == max_rollouts:
+      # print("Restarting search")
+      return self.look_forward(color, 0, 1, env.copy(), -1000, 1000)
+
     MiniMaxBot.eval_dict[obs] = score
     return score
 
