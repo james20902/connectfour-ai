@@ -8,6 +8,8 @@ HEIGHT = 450
 WIDTH = 400
 FPS = 60
 FRAMEPERSEC = pygame.time.Clock()
+BLANK_RATIO = 0.15
+BOARD_RATIO = 0.85
 
 BOARD_WIDTH = 7
 BOARD_HEIGHT = 6
@@ -16,7 +18,7 @@ circle_radius = HEIGHT * .05
 
 circle_padding_height = circle_radius * 0.3
 circle_total_height = (circle_radius * 2) + circle_padding_height
-board_padding = (HEIGHT * 0.85 - BOARD_HEIGHT * circle_total_height) / 2
+board_padding = (HEIGHT * BOARD_RATIO - BOARD_HEIGHT * circle_total_height) / 2
 ROW_PX_COORDS = [int(HEIGHT - (board_padding + circle_total_height * (0.5 + i))) for i in range(BOARD_HEIGHT)]
 
 circle_padding_width = circle_radius * 0.3
@@ -25,8 +27,8 @@ side_padding = (WIDTH - BOARD_WIDTH * circle_total_width) / 2
 COL_PX_COORDS = [int(side_padding + circle_total_width * (0.5 + i)) for i in range(BOARD_WIDTH)]
 
 def draw_board(screen, board):
-    pygame.draw.rect(screen, (255, 255, 255), pygame.Rect(0, 0, WIDTH, HEIGHT * .15))
-    pygame.draw.rect(screen, (0, 0, 255), pygame.Rect(0, HEIGHT * .15, WIDTH, HEIGHT * 0.85))
+    pygame.draw.rect(screen, (255, 255, 255), pygame.Rect(0, 0, WIDTH, HEIGHT * BLANK_RATIO))
+    pygame.draw.rect(screen, (0, 0, 255), pygame.Rect(0, HEIGHT * BLANK_RATIO, WIDTH, HEIGHT * BOARD_RATIO))
     for w in range(BOARD_WIDTH):
         for h in range(BOARD_HEIGHT):
             if board[w, h] == 0:
@@ -41,7 +43,7 @@ def draw_board(screen, board):
 def draw_active_piece(screen, column, player):
     pygame.draw.circle(screen, 
                        (255, 0, 0) if player == 1 else (255, 255, 0),
-                       (COL_PX_COORDS[column], WIDTH * .075),
+                       (COL_PX_COORDS[column], HEIGHT * (BLANK_RATIO / 2)),
                        circle_radius)
 
 if __name__ == "__main__":
