@@ -95,6 +95,7 @@ if __name__ == "__main__":
 
         active_drop = BOARD_WIDTH // 2
         active_player = 1
+        move_made = False
 
         # game loop
         while in_game:            
@@ -111,7 +112,26 @@ if __name__ == "__main__":
                 ind = np.argmin(np.abs(col))
 
                 board_env.step(active_drop, active_player)
+                move_made = True
+            else:            
+                # human input check
+                for event in pygame.event.get():
+                    if event.type == QUIT:
+                        pygame.quit()
+                        sys.exit()
+                    elif event.type == KEYDOWN:
+                        if event.key == K_LEFT:
+                            active_drop = max(0, active_drop - 1)  # Decrement the column, but don't go below 0
+                        elif event.key == K_RIGHT:
+                            active_drop = min(BOARD_WIDTH - 1, active_drop + 1)  # Increment the column, but don't go above 6
+                        elif event.key == K_SPACE:
+                            col = board_env._get_obs()[active_drop]
+                            if col[-1] == 0:
+                                ind = np.argmin(np.abs(col))
+                                board_env.manual_adjust_grid((active_drop, ind), active_player)
+                                move_made = True
 
+            if move_made:
                 if board_env.determine_win(board_env._get_obs(), (active_drop, ind)) != 0:
                     # one more draw to show the winning move
                     draw_board(screen, board_env._get_obs())
@@ -124,38 +144,10 @@ if __name__ == "__main__":
                     in_game = False
                 else:
                     active_drop = BOARD_WIDTH // 2
-                    active_player = -active_player            
-                continue
+                    active_player = -active_player
+                    move_made = False
 
-            # human input check
-            for event in pygame.event.get():
-                if event.type == QUIT:
-                    pygame.quit()
-                    sys.exit()
-                elif event.type == KEYDOWN:
-                    if event.key == K_LEFT:
-                        active_drop = max(0, active_drop - 1)  # Decrement the column, but don't go below 0
-                    elif event.key == K_RIGHT:
-                        active_drop = min(BOARD_WIDTH - 1, active_drop + 1)  # Increment the column, but don't go above 6
-                    elif event.key == K_SPACE:
-                        col = board_env._get_obs()[active_drop]
-                        if col[-1] == 0:
-                            ind = np.argmin(np.abs(col))
-                            board_env.manual_adjust_grid((active_drop, ind), active_player)
-                            if board_env.determine_win(board_env._get_obs(), (active_drop, ind)) != 0:
-                                # one more draw to show the winning move
-                                draw_board(screen, board_env._get_obs())
-                                pygame.display.flip()
-
-                                if active_player == -1:
-                                    active_player = 2
-                                print("Player", active_player, "wins!")
-
-                                in_game = False
-                            else:
-                                active_drop = BOARD_WIDTH // 2
-                                active_player = -active_player
-                FRAMEPERSEC.tick(FPS)
+            FRAMEPERSEC.tick(FPS)
 
         valid_input = False
         while not valid_input:
