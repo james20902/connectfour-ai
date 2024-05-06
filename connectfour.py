@@ -51,8 +51,8 @@ if __name__ == "__main__":
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption("Connect Four")
 
-    b1 = MiniMaxBot("Player 1")
-    b2 = MiniMaxBot("Player 2")
+    b1 = MiniMaxBot("Player 1", 3)
+    b2 = MiniMaxBot("Player 2", 3)
 
     # main loop
     while True:
