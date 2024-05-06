@@ -23,6 +23,9 @@ class Connect(gym.Env):
   # might need to swap to making a copy
   def _get_obs(self):
     return self.grid
+  
+  def manual_adjust_grid(self, coord, color):
+    self.grid[coord[0], coord[1]] = color
 
   def reset(self, seed=None, options=None):
     super().reset(seed=seed, options=options)
