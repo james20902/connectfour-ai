@@ -51,58 +51,91 @@ if __name__ == "__main__":
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption("Connect Four")
 
-    p1 = None
-    p2 = None
-
-    # print("Welcome to Connect Four! Player 1 is red and Player 2 is yellow.")
-
-    # valid_input = False
-    # while not valid_input:
-    #     p1 = input("Player 1 human or bot? (h/b):")
-    #     if p1 == 'h':
-    #         valid_input = True
-    #     elif p1 == 'b':
-    #         valid_input = True
-    #     else:
-    #         print("Invalid input. Please enter 'h' or 'b'")
-    #         valid_input = False
-    #         continue
-
-    # valid_input = False
-    # while not valid_input:
-    #     p2 = input("Player 2 human or bot? (h/b):")
-    #     if p1 == 'h':
-    #         valid_input = True
-    #     elif p1 == 'b':
-    #         valid_input = True
-    #     else:
-    #         print("Invalid input. Please enter 'h' or 'b'")
-    #         valid_input = False
-    #         continue
-
-    active_drop = BOARD_WIDTH // 2
-    active_player = 1
-
+    # main loop
     while True:
-        draw_board(screen, board_env._get_obs())
-        draw_active_piece(screen, active_drop, active_player)
+        print("cool")
+        board_env.reset()
+        in_game = False
+        p1 = None
+        p2 = None
 
-        pygame.display.flip()
-        for event in pygame.event.get():
-            if event.type == QUIT:
+        # print("Welcome to Connect Four! Player 1 is red and Player 2 is yellow.")
+
+        # valid_input = False
+        # while not valid_input:
+        #     p1 = input("Player 1 human or bot? (h/b):")
+        #     if p1 == 'h':
+        #         valid_input = True
+        #     elif p1 == 'b':
+        #         valid_input = True
+        #     else:
+        #         print("Invalid input. Please enter 'h' or 'b'")
+        #         valid_input = False
+        #         continue
+
+        # valid_input = False
+        # while not valid_input:
+        #     p2 = input("Player 2 human or bot? (h/b):")
+        #     if p1 == 'h':
+        #         valid_input = True
+        #     elif p1 == 'b':
+        #         valid_input = True
+        #     else:
+        #         print("Invalid input. Please enter 'h' or 'b'")
+        #         valid_input = False
+        #         continue
+
+        in_game = True
+
+        active_drop = BOARD_WIDTH // 2
+        active_player = 1
+
+        # game loop
+        while in_game:
+            draw_board(screen, board_env._get_obs())
+            draw_active_piece(screen, active_drop, active_player)
+            pygame.display.flip()
+
+            for event in pygame.event.get():
+                if event.type == QUIT:
+                    pygame.quit()
+                    sys.exit()
+                elif event.type == KEYDOWN:
+                    if event.key == K_LEFT:
+                        active_drop = max(0, active_drop - 1)  # Decrement the column, but don't go below 0
+                    elif event.key == K_RIGHT:
+                        active_drop = min(BOARD_WIDTH - 1, active_drop + 1)  # Increment the column, but don't go above 6
+                    elif event.key == K_SPACE:
+                        col = board_env._get_obs()[active_drop]
+                        if col[-1] == 0:
+                            ind = np.argmin(np.abs(col))
+                            board_env.manual_adjust_grid((active_drop, ind), active_player)
+                            if board_env.determine_win(board_env._get_obs(), (active_drop, ind)) != 0:
+                                # one more draw to show the winning move
+                                draw_board(screen, board_env._get_obs())
+                                pygame.display.flip()
+
+                                if active_player == -1:
+                                    active_player = 2
+                                print("Player", active_player, "wins!")
+
+                                in_game = False
+                            else:
+                                active_player = -active_player
+                        # if a bot decides to make an illegal move for whatever reason just resample
+
+                FRAMEPERSEC.tick(FPS)
+
+        valid_input = False
+        while not valid_input:
+            response = input("Do you wish to play again? (y/n):")
+            if response == 'y':
+                valid_input = True
+                print("restarting...")
+            elif response == 'n':
                 pygame.quit()
                 sys.exit()
-            elif event.type == KEYDOWN:
-                if event.key == K_LEFT:
-                    active_drop = max(0, active_drop - 1)  # Decrement the column, but don't go below 0
-                elif event.key == K_RIGHT:
-                    active_drop = min(BOARD_WIDTH - 1, active_drop + 1)  # Increment the column, but don't go above 6
-                elif event.key == K_SPACE:
-                    col = board_env._get_obs()[active_drop]
-                    if col[-1] == 0:
-                        ind = np.argmin(np.abs(col))
-                        board_env.manual_adjust_grid((active_drop, ind), active_player)
-                    # if a bot decides to make an illegal move for whatever reason just resample
-                    print("space pressed")
-                    active_player *= -1
-        FRAMEPERSEC.tick(FPS)
+            else:
+                print("Invalid input. Please enter 'y' or 'n'")
+                valid_input = False
+                continue
