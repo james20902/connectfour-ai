@@ -9,8 +9,8 @@ WIDTH = 400
 FPS = 60
 FRAMEPERSEC = pygame.time.Clock()
 
-BOARD_WIDTH = 6
-BOARD_HEIGHT = 7
+BOARD_WIDTH = 7
+BOARD_HEIGHT = 6
 
 circle_radius = HEIGHT * .05
 
@@ -97,26 +97,34 @@ if __name__ == "__main__":
         active_player = 1
 
         # game loop
-        while in_game:
-            # reset this so that piece starts near the center every turn
-            
+        while in_game:            
 
             draw_board(screen, board_env._get_obs())
             draw_active_piece(screen, active_drop, active_player)
             pygame.display.flip()
 
-            if p1 == 'b' and active_player == 1:
-                active_drop = b1.get_move(board_env._get_obs())
+            if (p1 == 'b' and active_player == 1) or (p2 == 'b' and active_player == -1):
+                active_bot = b1 if active_player == 1 else b2
+
+                active_drop = active_bot.get_move(board_env._get_obs())
+                col = board_env._get_obs()[active_drop]
+                ind = np.argmin(np.abs(col))
+
                 board_env.step(active_drop, active_player)
-                active_drop = BOARD_WIDTH // 2
-                active_player = -active_player                
-                continue
-            
-            if p2 == 'b' and active_player == -1:
-                active_drop = b2.get_move(board_env._get_obs())
-                board_env.step(active_drop, active_player)
-                active_drop = BOARD_WIDTH // 2
-                active_player = -active_player
+
+                if board_env.determine_win(board_env._get_obs(), (active_drop, ind)) != 0:
+                    # one more draw to show the winning move
+                    draw_board(screen, board_env._get_obs())
+                    pygame.display.flip()
+
+                    if active_player == -1:
+                        active_player = 2
+                    print("Player", active_player, "wins!")
+
+                    in_game = False
+                else:
+                    active_drop = BOARD_WIDTH // 2
+                    active_player = -active_player            
                 continue
 
             # human input check
