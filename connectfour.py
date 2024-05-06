@@ -9,46 +9,43 @@ WIDTH = 400
 FPS = 60
 FRAMEPERSEC = pygame.time.Clock()
 
-ROWS = 6
-COLUMNS = 7
-
-board = np.zeros((6, 7))
-board[0, 6] = 1
+BOARD_WIDTH = 6
+BOARD_HEIGHT = 7
 
 circle_radius = HEIGHT * .05
 
-circle_padding = circle_radius * 0.3
-circle_total_width = (circle_radius * 2) + circle_padding
-side_padding = (WIDTH - (7 * circle_total_width)) / 2
-COL_PX_COORDS = [int(side_padding + circle_total_width * (0.5 + i)) for i in range(7)]
-
 circle_padding_height = circle_radius * 0.3
 circle_total_height = (circle_radius * 2) + circle_padding_height
-top_padding = (HEIGHT * 0.85 - 6 * circle_total_height) / 2
-ROW_PX_COORDS = [int(HEIGHT * .15 + top_padding + circle_total_height * (0.5 + i)) for i in range(6)]
+board_padding = (HEIGHT * 0.85 - BOARD_HEIGHT * circle_total_height) / 2
+ROW_PX_COORDS = [int(HEIGHT - (board_padding + circle_total_height * (0.5 + i))) for i in range(BOARD_HEIGHT)]
+
+circle_padding_width = circle_radius * 0.3
+circle_total_width = (circle_radius * 2) + circle_padding_width
+side_padding = (WIDTH - BOARD_WIDTH * circle_total_width) / 2
+COL_PX_COORDS = [int(side_padding + circle_total_width * (0.5 + i)) for i in range(BOARD_WIDTH)]
 
 def draw_board(screen, board):
     pygame.draw.rect(screen, (255, 255, 255), pygame.Rect(0, 0, WIDTH, HEIGHT * .15))
     pygame.draw.rect(screen, (0, 0, 255), pygame.Rect(0, HEIGHT * .15, WIDTH, HEIGHT * 0.85))
-    for i in range(7):
-        for j in range(6):
-            if board[j, i] == 0:
-                # empty circles should be slightly larger (easier on the eyes)
-                pygame.draw.circle(screen, (255, 255, 255), (int(COL_PX_COORDS[i]), int(ROW_PX_COORDS[j])), circle_radius * 1.1)
+    for w in range(BOARD_WIDTH):
+        for h in range(BOARD_HEIGHT):
+            if board[w, h] == 0:
+                pygame.draw.circle(screen, (255, 255, 255), (COL_PX_COORDS[w], ROW_PX_COORDS[h]), circle_radius * 1.1)
             else:
                 pygame.draw.circle(screen, 
-                                (255, 0, 0) if board[j, i] == 1 else (255, 255, 0),
-                                (int(COL_PX_COORDS[i]), int(ROW_PX_COORDS[j])),
-                                circle_radius)
+                                   (255, 0, 0) if board[w, h] == 1 else (255, 255, 0),
+                                   (COL_PX_COORDS[w], ROW_PX_COORDS[h]),
+                                   circle_radius)
+
 
 def draw_active_piece(screen, column, player):
     pygame.draw.circle(screen, 
                        (255, 0, 0) if player == 1 else (255, 255, 0),
-                       (int(COL_PX_COORDS[column]), int(HEIGHT * .075)),
+                       (COL_PX_COORDS[column], WIDTH * .075),
                        circle_radius)
 
 if __name__ == "__main__":
-    board_env = Connect(ROWS, COLUMNS)
+    board_env = Connect(width=BOARD_WIDTH, height=BOARD_HEIGHT)
 
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -83,12 +80,12 @@ if __name__ == "__main__":
     #         valid_input = False
     #         continue
 
-    active_column = COLUMNS // 2
+    active_drop = BOARD_WIDTH // 2
     active_player = 1
 
     while True:
-        draw_board(screen, board)
-        draw_active_piece(screen, active_column, active_player)
+        draw_board(screen, board_env._get_obs())
+        draw_active_piece(screen, active_drop, active_player)
 
         pygame.display.flip()
         for event in pygame.event.get():
@@ -97,10 +94,15 @@ if __name__ == "__main__":
                 sys.exit()
             elif event.type == KEYDOWN:
                 if event.key == K_LEFT:
-                    active_column = max(0, active_column - 1)  # Decrement the column, but don't go below 0
+                    active_drop = max(0, active_drop - 1)  # Decrement the column, but don't go below 0
                 elif event.key == K_RIGHT:
-                    active_column = min(6, active_column + 1)  # Increment the column, but don't go above 6
+                    active_drop = min(BOARD_WIDTH - 1, active_drop + 1)  # Increment the column, but don't go above 6
                 elif event.key == K_SPACE:
+                    col = board_env._get_obs()[active_drop]
+                    if col[-1] == 0:
+                        ind = np.argmin(np.abs(col))
+                        board_env.manual_adjust_grid((active_drop, ind), active_player)
+                    # if a bot decides to make an illegal move for whatever reason just resample
                     print("space pressed")
                     active_player *= -1
         FRAMEPERSEC.tick(FPS)
